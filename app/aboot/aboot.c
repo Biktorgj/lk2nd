@@ -95,6 +95,10 @@
 #include <display_menu.h>
 #include "fastboot_test.h"
 
+#if FASTBOOT_TIMER
+#include "fastboot_timer.h"
+#endif
+
 extern  bool target_use_signed_kernel(void);
 extern void platform_uninit(void);
 extern void target_uninit(void);
@@ -123,6 +127,9 @@ struct fastboot_cmd_desc {
 #define TARGET(NAME) EXPAND(NAME)
 
 #define DISPLAY_PANEL_HDMI "hdmi"
+#if FASTBOOT_TIMER
+#define FASTBOOT_TIMER_WAIT_MS 5000
+#endif
 
 #ifdef MEMBASE
 #define EMMC_BOOT_IMG_HEADER_ADDR (0xFF000+(MEMBASE))
@@ -5445,6 +5452,40 @@ void aboot_init(const struct app_descriptor *app)
 #else
 	reboot_mode = check_reboot_mode();
 #endif
+
+#if FASTBOOT_TIMER
+	/* register aboot specific fastboot commands */
+	aboot_fastboot_register_commands();
+
+	/* Register timer commands */
+	fastboot_timer_register_commands();
+
+	/* dump partition table for debug info */
+	if (target_is_emmc_boot())
+		partition_dump();
+
+	/* initialize and start fastboot */
+#if !VERIFIED_BOOT_2
+	fastboot_init(target_get_scratch_address(), target_get_max_flash_size());
+#else
+	/* Add salt buffer offset at start of image address to copy VB salt */
+	fastboot_init(ADD_SALT_BUFF_OFFSET(target_get_scratch_address()),
+		SUB_SALT_BUFF_OFFSET(target_get_max_flash_size()));
+#endif
+#if FBCON_DISPLAY_MSG
+	display_fastboot_menu();
+#endif
+
+	/* Sleep for FASTBOOT_TIMER_WAIT_MS here in case user sends a command */
+	thread_sleep(FASTBOOT_TIMER_WAIT_MS);
+
+	if (fastboot_stay_requested()) {
+		dprintf(CRITICAL, "Forced fastbooyt mode requested\n");
+		reboot_mode = FASTBOOT_MODE;
+//		goto fastboot;
+	}
+#endif
+
 	if (reboot_mode == RECOVERY_MODE)
 	{
 		boot_into_recovery = 1;
@@ -5549,6 +5590,9 @@ retry_boot:
 	}
 
 fastboot:
+#ifdef FASTBOOT_TIMER
+dprintf(INFO, "Entered fastboot mode\n");
+#else
 	/* We are here means regular boot did not happen. Start fastboot. */
 
 	/* register aboot specific fastboot commands */
@@ -5568,6 +5612,7 @@ fastboot:
 #endif
 #if FBCON_DISPLAY_MSG
 	display_fastboot_menu();
+#endif
 #endif
 }
 

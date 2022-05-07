@@ -43,6 +43,10 @@
 #include <usb30_udc.h>
 #endif
 
+#if FASTBOOT_TIMER
+#include "fastboot_timer.h"
+#endif
+
 typedef struct
 {
 	int (*udc_init)(struct udc_device *devinfo);
@@ -602,6 +606,13 @@ again:
 		if (r < 0) break;
 		buffer[r] = 0;
 		dprintf(INFO,"fastboot: %s\n", buffer);
+		#if FASTBOOT_TIMER
+			if (!strncmp((const char*) buffer, "erase", 5) ||
+				!strncmp((const char*) buffer, "boot", 4) ||
+				!strncmp((const char*) buffer, "flash", 5)) {
+				set_fastboot_stay_flag(true);
+			}
+		#endif
 
 #if CHECK_BAT_VOLTAGE
 		/* check battery voltage before erase or flash image */
