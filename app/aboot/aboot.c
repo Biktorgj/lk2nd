@@ -5453,39 +5453,6 @@ void aboot_init(const struct app_descriptor *app)
 	reboot_mode = check_reboot_mode();
 #endif
 
-#if FASTBOOT_TIMER
-	/* register aboot specific fastboot commands */
-	aboot_fastboot_register_commands();
-
-	/* Register timer commands */
-	fastboot_timer_register_commands();
-
-	/* dump partition table for debug info */
-	if (target_is_emmc_boot())
-		partition_dump();
-
-	/* initialize and start fastboot */
-#if !VERIFIED_BOOT_2
-	fastboot_init(target_get_scratch_address(), target_get_max_flash_size());
-#else
-	/* Add salt buffer offset at start of image address to copy VB salt */
-	fastboot_init(ADD_SALT_BUFF_OFFSET(target_get_scratch_address()),
-		SUB_SALT_BUFF_OFFSET(target_get_max_flash_size()));
-#endif
-#if FBCON_DISPLAY_MSG
-	display_fastboot_menu();
-#endif
-
-	/* Sleep for FASTBOOT_TIMER_WAIT_MS here in case user sends a command */
-	thread_sleep(FASTBOOT_TIMER_WAIT_MS);
-
-	if (fastboot_stay_requested()) {
-		dprintf(CRITICAL, "Forced fastbooyt mode requested\n");
-		reboot_mode = FASTBOOT_MODE;
-//		goto fastboot;
-	}
-#endif
-
 	if (reboot_mode == RECOVERY_MODE)
 	{
 		boot_into_recovery = 1;
@@ -5521,6 +5488,10 @@ void aboot_init(const struct app_descriptor *app)
 				ASSERT(0);
 		}
 	}
+#endif
+
+#if FASTBOOT_TIMER
+	boot_into_fastboot = true;
 #endif
 
 normal_boot:
@@ -5590,14 +5561,13 @@ retry_boot:
 	}
 
 fastboot:
-#ifdef FASTBOOT_TIMER
-dprintf(INFO, "Entered fastboot mode\n");
-#else
 	/* We are here means regular boot did not happen. Start fastboot. */
 
 	/* register aboot specific fastboot commands */
 	aboot_fastboot_register_commands();
-
+#if FASTBOOT_TIMER
+	fastboot_timer_register_commands();
+#endif
 	/* dump partition table for debug info */
 	if (target_is_emmc_boot())
 		partition_dump();
@@ -5613,6 +5583,12 @@ dprintf(INFO, "Entered fastboot mode\n");
 #if FBCON_DISPLAY_MSG
 	display_fastboot_menu();
 #endif
+#if FASTBOOT_TIMER
+
+thread_sleep(FASTBOOT_TIMER_WAIT_MS);
+if (!fastboot_stay_requested()) {
+    cmd_continue(NULL, NULL, 0);
+}
 #endif
 }
 

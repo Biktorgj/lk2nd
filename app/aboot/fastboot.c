@@ -607,9 +607,7 @@ again:
 		buffer[r] = 0;
 		dprintf(INFO,"fastboot: %s\n", buffer);
 		#if FASTBOOT_TIMER
-			if (!strncmp((const char*) buffer, "erase", 5) ||
-				!strncmp((const char*) buffer, "boot", 4) ||
-				!strncmp((const char*) buffer, "flash", 5)) {
+			if (strncmp((const char*) buffer, "getvar:", 6) != 0) {
 				set_fastboot_stay_flag(true);
 			}
 		#endif
