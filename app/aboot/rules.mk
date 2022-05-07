@@ -28,3 +28,8 @@ OBJS += \
 	$(LOCAL_DIR)/mdtp_defs.o \
 	$(LOCAL_DIR)/mdtp_fs.o
 endif
+
+ifeq ($(FASTBOOT_TIMER),1)
+OBJS += \
+	$(LOCAL_DIR)/fastboot_timer.o
+endif
