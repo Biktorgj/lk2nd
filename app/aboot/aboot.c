@@ -5491,7 +5491,9 @@ void aboot_init(const struct app_descriptor *app)
 #endif
 
 #if FASTBOOT_TIMER
+if (reboot_mode != RECOVERY_MODE) {
 	boot_into_fastboot = true;
+}
 #endif
 
 normal_boot:
