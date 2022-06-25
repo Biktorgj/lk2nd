@@ -5586,7 +5586,8 @@ fastboot:
 #if FASTBOOT_TIMER
 
 thread_sleep(FASTBOOT_TIMER_WAIT_MS);
-if (!fastboot_stay_requested()) {
+if (!fastboot_stay_requested() && 
+	reboot_mode != FASTBOOT_MODE) {
     cmd_continue(NULL, NULL, 0);
 }
 #endif
